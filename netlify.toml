@@ -1,0 +1,23 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Proxy /api/flight-lookup → Netlify function
+[[redirects]]
+  from = "/api/flight-lookup"
+  to = "/.netlify/functions/flight-lookup"
+  status = 200
+
+# SPA fallback — must be last
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Scheduled function: update flights every 4 hours
+[functions."update-flights"]
+  schedule = "0 */4 * * *"
