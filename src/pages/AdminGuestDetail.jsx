@@ -149,7 +149,7 @@ export default function AdminGuestDetail() {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-slate-700">Flights ({flights.length})</h2>
-          <button onClick={() => navigate(`/admin/guest/${id}/flight/new`)} className="text-sm text-blue-600">+ Add</button>
+          <button onClick={() => navigate(`/flights/new?profileId=${id}&back=/admin/guest/${id}`)} className="text-sm text-blue-600">+ Add</button>
         </div>
         {flights.map(f => (
           <FlightCard key={f.id} flight={f} showHistory

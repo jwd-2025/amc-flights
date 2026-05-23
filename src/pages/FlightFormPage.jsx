@@ -30,6 +30,9 @@ export default function FlightFormPage() {
   const [searchParams] = useSearchParams()
   const isEdit = Boolean(id)
 
+  const guestProfileId = searchParams.get('profileId') // set when admin adds flight for a guest
+  const backTo = searchParams.get('back') || '/dashboard'
+
   const [form, setForm] = useState({ ...BLANK, direction: searchParams.get('dir') || 'arrival' })
   const [loading, setLoading] = useState(false)
   const [lookingUp, setLookingUp] = useState(false)
@@ -108,7 +111,7 @@ export default function FlightFormPage() {
     setLoading(true)
 
     const payload = {
-      profile_id: profile.id,
+      profile_id: guestProfileId || profile.id,
       direction: form.direction,
       flight_number: form.flight_number.toUpperCase().trim(),
       airline: form.airline,
@@ -143,7 +146,7 @@ export default function FlightFormPage() {
         const { error: iErr } = await supabase.from('flights').insert(payload)
         if (iErr) throw iErr
       }
-      navigate('/dashboard')
+      navigate(backTo)
     } catch (err) {
       setError(err.message || 'Save failed')
     } finally {
@@ -152,7 +155,7 @@ export default function FlightFormPage() {
   }
 
   return (
-    <Layout title={isEdit ? 'Edit Flight' : 'Add Flight'} showBack backTo="/dashboard">
+    <Layout title={isEdit ? 'Edit Flight' : 'Add Flight'} showBack backTo={backTo}>
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Direction */}
         <div>
