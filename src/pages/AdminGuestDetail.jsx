@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import Layout from '../components/Layout'
@@ -9,8 +9,10 @@ import dayjs from 'dayjs'
 export default function AdminGuestDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { profile: admin } = useAuth()
   const isNew = id === 'new'
+  const defaultRole = searchParams.get('role') || 'guest'
 
   const [guest, setGuest] = useState(null)
   const [flights, setFlights] = useState([])
@@ -19,7 +21,7 @@ export default function AdminGuestDetail() {
   const [drivers, setDrivers] = useState([])
   const [loading, setLoading] = useState(!isNew)
   const [editInfo, setEditInfo] = useState(false)
-  const [info, setInfo] = useState({ name: '', phone: '', email: '', role: 'guest' })
+  const [info, setInfo] = useState({ name: '', phone: '', email: '', role: defaultRole })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -97,11 +99,11 @@ export default function AdminGuestDetail() {
   if (loading) return <Layout title="Guest" showBack backTo="/admin"><div className="py-12 text-center text-slate-400">Loading…</div></Layout>
 
   if (isNew) return (
-    <Layout title="Add Guest" showBack backTo="/admin">
+    <Layout title={defaultRole === 'driver' ? 'Add Driver' : 'Add Guest'} showBack backTo="/admin">
       <form onSubmit={saveInfo} className="space-y-4">
         <InfoFields info={info} setInfo={setInfo} />
         {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg p-3">{error}</p>}
-        <button className="btn-primary" type="submit" disabled={saving}>{saving ? 'Creating…' : 'Create Guest'}</button>
+        <button className="btn-primary" type="submit" disabled={saving}>{saving ? 'Creating…' : defaultRole === 'driver' ? 'Create Driver' : 'Create Guest'}</button>
       </form>
     </Layout>
   )

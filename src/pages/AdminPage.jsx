@@ -96,7 +96,7 @@ export default function AdminPage() {
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <p className="text-sm text-slate-500">{drivers.length} drivers</p>
-            <button onClick={() => navigate('/admin/driver/new')} className="text-sm text-blue-600 font-medium">
+            <button onClick={() => navigate('/admin/guest/new?role=driver')} className="text-sm text-blue-600 font-medium">
               + Add Driver
             </button>
           </div>
@@ -110,7 +110,7 @@ export default function AdminPage() {
                 <p className="text-sm text-slate-500">{d.phone}</p>
               </div>
               <button
-                onClick={() => navigate(`/admin/profile/${d.id}`)}
+                onClick={() => navigate(`/admin/guest/${d.id}`)}
                 className="text-sm text-blue-600"
               >
                 Edit
