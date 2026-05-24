@@ -12,7 +12,7 @@ const STATUS_STYLE = {
   delayed:    { cls: 'bg-amber-100 text-amber-700', label: 'Delayed' },
 }
 
-export default function FlightCard({ flight, onDelete, showHistory = false }) {
+export default function FlightCard({ flight, onDelete, showHistory = false, backTo }) {
   const navigate = useNavigate()
   const [showHist, setShowHist] = useState(false)
   const [history, setHistory] = useState([])
@@ -86,7 +86,7 @@ export default function FlightCard({ flight, onDelete, showHistory = false }) {
       {/* Actions */}
       <div className="flex gap-2 pt-1 border-t border-slate-100">
         <button
-          onClick={() => navigate(`/flights/${flight.id}/edit`)}
+          onClick={() => navigate(`/flights/${flight.id}/edit${backTo ? `?back=${encodeURIComponent(backTo)}` : ''}`)}
           className="flex-1 text-sm text-blue-600 font-medium hover:text-blue-800 py-1"
         >
           Edit

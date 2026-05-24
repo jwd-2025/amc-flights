@@ -152,7 +152,7 @@ export default function AdminGuestDetail() {
           <button onClick={() => navigate(`/flights/new?profileId=${id}&back=/admin/guest/${id}`)} className="text-sm text-blue-600">+ Add</button>
         </div>
         {flights.map(f => (
-          <FlightCard key={f.id} flight={f} showHistory
+          <FlightCard key={f.id} flight={f} showHistory backTo={`/admin/guest/${id}`}
             onDelete={async fid => {
               if (!confirm('Delete flight?')) return
               await supabase.from('flights').delete().eq('id', fid)

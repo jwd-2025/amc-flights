@@ -32,10 +32,13 @@ export default function Layout({ children, title, showBack = false, backTo }) {
           )}
           <h1 className="flex-1 font-semibold text-lg truncate">{title || 'AMC Flights'}</h1>
           <div className="flex items-center gap-2">
-            {profile && (
-              <span className={`badge ${roleBadge.cls} hidden sm:inline-flex`}>
-                {roleBadge.label}
-              </span>
+            {profile?.role === 'admin' && (
+              <button
+                onClick={() => navigate('/admin')}
+                className="text-blue-200 hover:text-white text-sm font-medium"
+              >
+                Admin
+              </button>
             )}
             {profile && (
               <button
