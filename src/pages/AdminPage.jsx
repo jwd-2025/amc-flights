@@ -25,7 +25,7 @@ export default function AdminPage() {
         .select('*, flights(*), accommodations(*)')
         .eq('role', 'guest')
         .order('name'),
-      supabase.from('profiles').select('*').eq('role', 'driver').order('name'),
+      supabase.from('profiles').select('*').in('role', ['driver', 'admin']).order('name'),
       supabase
         .from('transfers')
         .select('*, profile:profiles!transfers_profile_id_fkey(name, phone), flight:flights(flight_number, direction, scheduled_time), driver:profiles!transfers_driver_id_fkey(name, phone)')

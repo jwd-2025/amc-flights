@@ -24,7 +24,7 @@ export default function AdminGuestDetail() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    supabase.from('profiles').select('*').eq('role', 'driver').then(r => setDrivers(r.data || []))
+    supabase.from('profiles').select('*').in('role', ['driver', 'admin']).order('name').then(r => setDrivers(r.data || []))
     if (!isNew) loadGuest()
     else setLoading(false)
   }, [id])
