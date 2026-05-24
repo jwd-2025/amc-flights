@@ -125,15 +125,23 @@ function AssignmentCard({ assignment: a, onComplete, onStart }) {
         {guest?.email && <p className="text-xs text-slate-500">{guest.email}</p>}
       </div>
 
-      {/* Route */}
+      {/* Route — derived from flight direction + accommodation */}
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div>
           <p className="text-xs text-slate-400 mb-1">From</p>
-          <p className="font-medium text-slate-700">{a.pickup_location || '—'}</p>
+          <p className="font-medium text-slate-700">
+            {isPickup
+              ? (flight ? `${flight.destination_code || 'Airport'}` : 'Airport')
+              : (accom?.address || accom?.name || '—')}
+          </p>
         </div>
         <div>
           <p className="text-xs text-slate-400 mb-1">To</p>
-          <p className="font-medium text-slate-700">{a.dropoff_location || '—'}</p>
+          <p className="font-medium text-slate-700">
+            {isPickup
+              ? (accom?.address || accom?.name || '—')
+              : (flight ? `${flight.origin_code || 'Airport'}` : 'Airport')}
+          </p>
         </div>
       </div>
 
