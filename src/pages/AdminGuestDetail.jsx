@@ -75,26 +75,6 @@ export default function AdminGuestDetail() {
     }
   }
 
-  async function addTransfer() {
-    const { data } = await supabase
-      .from('transfers')
-      .insert({
-        profile_id: id,
-        transfer_type: 'pickup',
-        status: 'pending',
-        pickup_location: accommodation?.address || '',
-        dropoff_location: '',
-      })
-      .select()
-      .single()
-    if (data) setTransfers(prev => [...prev, data])
-  }
-
-  async function deleteTransfer(tid) {
-    if (!confirm('Delete this transfer?')) return
-    await supabase.from('transfers').delete().eq('id', tid)
-    setTransfers(prev => prev.filter(t => t.id !== tid))
-  }
 
   if (loading) return <Layout title="Guest" showBack backTo="/admin"><div className="py-12 text-center text-slate-400">Loading…</div></Layout>
 
@@ -157,25 +137,25 @@ export default function AdminGuestDetail() {
         {flights.length === 0 && <p className="text-sm text-slate-400">No flights entered</p>}
       </div>
 
-      {/* Transfers */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-slate-700">Transfers ({transfers.length})</h2>
-          <button onClick={addTransfer} className="text-sm text-blue-600">+ Add</button>
+      {/* Driver Assignments */}
+      {flights.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="font-semibold text-slate-700">Driver Assignments</h2>
+          {flights.map(f => (
+            <DriverAssignment
+              key={f.id}
+              flight={f}
+              profileId={id}
+              drivers={drivers}
+              existingTransfer={transfers.find(t => t.flight_id === f.id)}
+              onSave={t => setTransfers(prev => {
+                const idx = prev.findIndex(x => x.flight_id === f.id)
+                return idx >= 0 ? prev.map((x, i) => i === idx ? t : x) : [...prev, t]
+              })}
+            />
+          ))}
         </div>
-        {transfers.map(t => (
-          <AdminTransferEdit
-            key={t.id}
-            transfer={t}
-            drivers={drivers}
-            flights={flights}
-            profileId={id}
-            onDelete={() => deleteTransfer(t.id)}
-            onUpdate={loadGuest}
-          />
-        ))}
-        {transfers.length === 0 && <p className="text-sm text-slate-400">No transfers scheduled</p>}
-      </div>
+      )}
     </Layout>
   )
 }
@@ -322,92 +302,48 @@ function AccommodationEdit({ profileId, existing, onSave }) {
   )
 }
 
-function AdminTransferEdit({ transfer, drivers, flights, profileId, onDelete, onUpdate }) {
-  const [form, setForm] = useState({
-    transfer_type: transfer.transfer_type || 'pickup',
-    pickup_location: transfer.pickup_location || '',
-    dropoff_location: transfer.dropoff_location || '',
-    driver_id: transfer.driver_id || '',
-    flight_id: transfer.flight_id || '',
-    status: transfer.status || 'pending',
-    notes: transfer.notes || '',
-    scheduled_time: transfer.scheduled_time ? dayjs(transfer.scheduled_time).format('YYYY-MM-DDTHH:mm') : '',
-  })
+function DriverAssignment({ flight, profileId, drivers, existingTransfer, onSave }) {
+  const isArrival = flight.direction === 'arrival'
+  const transferType = isArrival ? 'pickup' : 'dropoff'
+  const [driverId, setDriverId] = useState(existingTransfer?.driver_id || '')
   const [saving, setSaving] = useState(false)
 
-  function set(f, v) { setForm(prev => ({ ...prev, [f]: v })) }
-
-  async function save() {
+  async function assign(e) {
+    const val = e.target.value
+    setDriverId(val)
     setSaving(true)
-    await supabase.from('transfers').update({
-      ...form,
-      scheduled_time: form.scheduled_time || null,
-      driver_id: form.driver_id || null,
-      flight_id: form.flight_id || null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', transfer.id)
+    let data
+    if (existingTransfer) {
+      const res = await supabase.from('transfers')
+        .update({ driver_id: val || null, status: val ? 'assigned' : 'pending', updated_at: new Date().toISOString() })
+        .eq('id', existingTransfer.id).select().single()
+      data = res.data
+    } else {
+      const res = await supabase.from('transfers')
+        .insert({ profile_id: profileId, flight_id: flight.id, transfer_type: transferType, driver_id: val || null, status: val ? 'assigned' : 'pending' })
+        .select().single()
+      data = res.data
+    }
+    if (data) onSave(data)
     setSaving(false)
-    onUpdate()
   }
 
   return (
-    <div className="card space-y-3 border-l-4 border-blue-400">
-      <div className="grid grid-cols-2 gap-2">
-        {['pickup', 'dropoff'].map(t => (
-          <button key={t} type="button" onClick={() => set('transfer_type', t)}
-            className={`py-2 rounded-lg text-sm font-medium capitalize border transition-colors
-              ${form.transfer_type === t ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`}
-          >
-            {t === 'pickup' ? '↙ Pickup' : 'Dropoff ↗'}
-          </button>
-        ))}
+    <div className="card flex items-center gap-3">
+      <span className="text-xl shrink-0">{isArrival ? '🛬' : '🛫'}</span>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-slate-800">{flight.flight_number}</p>
+        <p className="text-xs text-slate-500 capitalize">{transferType}</p>
       </div>
-      <div>
-        <label className="label">From</label>
-        <input className="input text-sm" value={form.pickup_location} onChange={e => set('pickup_location', e.target.value)} placeholder="Airport / address" />
-      </div>
-      <div>
-        <label className="label">To</label>
-        <input className="input text-sm" value={form.dropoff_location} onChange={e => set('dropoff_location', e.target.value)} placeholder="Hotel / address" />
-      </div>
-      <div>
-        <label className="label">Linked Flight</label>
-        <select className="input text-sm" value={form.flight_id} onChange={e => set('flight_id', e.target.value)}>
-          <option value="">— None —</option>
-          {flights.map(f => (
-            <option key={f.id} value={f.id}>{f.direction === 'arrival' ? '🛬' : '🛫'} {f.flight_number}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Scheduled Time</label>
-        <input className="input text-sm" type="datetime-local" value={form.scheduled_time} onChange={e => set('scheduled_time', e.target.value)} />
-      </div>
-      <div>
-        <label className="label">Driver</label>
-        <select className="input text-sm" value={form.driver_id} onChange={e => set('driver_id', e.target.value)}>
-          <option value="">— Unassigned —</option>
-          {drivers.map(d => <option key={d.id} value={d.id}>{d.name} ({d.phone})</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="label">Status</label>
-        <select className="input text-sm" value={form.status} onChange={e => set('status', e.target.value)}>
-          {['pending', 'assigned', 'in_progress', 'completed'].map(s => (
-            <option key={s} value={s} className="capitalize">{s}</option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <label className="label">Notes</label>
-        <input className="input text-sm" value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Any special instructions…" />
-      </div>
-      <div className="flex gap-2">
-        <button onClick={save} disabled={saving} className="btn-success text-sm px-4 py-2 flex-1">
-          {saving ? 'Saving…' : 'Save Transfer'}
-        </button>
-        <button onClick={onDelete} className="btn-danger">Delete</button>
-      </div>
+      <select
+        className="input text-sm w-auto max-w-[180px]"
+        value={driverId}
+        onChange={assign}
+        disabled={saving}
+      >
+        <option value="">— No driver —</option>
+        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+      </select>
     </div>
   )
 }
