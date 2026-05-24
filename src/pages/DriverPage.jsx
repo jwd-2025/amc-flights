@@ -18,9 +18,8 @@ export default function DriverPage() {
       .from('transfers')
       .select(`
         *,
-        profile:profiles!transfers_profile_id_fkey(name, phone, email),
-        flight:flights(flight_number, direction, scheduled_time, actual_time, status, terminal, gate, origin_code, destination_code, airline),
-        accommodation:accommodations!accommodations_profile_id_fkey(type, name, address, notes)
+        profile:profiles!transfers_profile_id_fkey(name, phone, email, accommodations(type, name, address, notes)),
+        flight:flights(flight_number, direction, scheduled_time, actual_time, status, terminal, gate, origin_code, destination_code, airline)
       `)
       .eq('driver_id', profile.id)
       .order('scheduled_time', { ascending: true })
@@ -89,7 +88,7 @@ function AssignmentCard({ assignment: a, onComplete, onStart }) {
   const isPickup = a.transfer_type === 'pickup'
   const flight = a.flight
   const guest = a.profile
-  const accom = a.accommodation
+  const accom = a.profile?.accommodations?.[0] || null
 
   const statusColor = {
     pending: 'bg-slate-100 text-slate-600',
