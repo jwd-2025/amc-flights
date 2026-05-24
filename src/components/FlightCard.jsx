@@ -44,7 +44,14 @@ export default function FlightCard({ flight, onDelete, showHistory = false, back
         <div className="flex items-center gap-2">
           <span className="text-2xl">{isArrival ? '🛬' : '🛫'}</span>
           <div>
-            <p className="font-bold text-slate-800 text-lg leading-tight">{flight.flight_number}</p>
+            <a
+              href={`https://flightaware.com/live/flight/${flight.flight_number}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-bold text-blue-700 text-lg leading-tight hover:underline"
+            >
+              {flight.flight_number}
+            </a>
             <p className="text-xs text-slate-500">{flight.airline}</p>
           </div>
         </div>
