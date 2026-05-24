@@ -131,19 +131,11 @@ export default function AdminGuestDetail() {
       </div>
 
       {/* Accommodation */}
-      {accommodation && (
-        <div className="card space-y-2">
-          <h2 className="font-semibold text-slate-700">Accommodation</h2>
-          <div className="text-sm space-y-1">
-            <Row label="Type" value={accommodation.type} />
-            <Row label="Name" value={accommodation.name} />
-            <Row label="Address" value={accommodation.address} />
-            {accommodation.check_in && <Row label="Check-in" value={accommodation.check_in} />}
-            {accommodation.check_out && <Row label="Check-out" value={accommodation.check_out} />}
-            {accommodation.notes && <Row label="Notes" value={accommodation.notes} />}
-          </div>
-        </div>
-      )}
+      <AccommodationEdit
+        profileId={id}
+        existing={accommodation}
+        onSave={updated => setAccommodation(updated)}
+      />
 
       {/* Flights */}
       <div className="space-y-3">
@@ -218,6 +210,112 @@ function Row({ label, value }) {
     <div className="flex gap-2">
       <span className="text-slate-400 w-20 shrink-0">{label}</span>
       <span className="text-slate-800 font-medium">{value || '—'}</span>
+    </div>
+  )
+}
+
+function AccommodationEdit({ profileId, existing, onSave }) {
+  const BLANK = { type: 'hotel', name: '', address: '', contact_info: '', check_in: '', check_out: '', notes: '' }
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState(existing
+    ? { type: existing.type || 'hotel', name: existing.name || '', address: existing.address || '', contact_info: existing.contact_info || '', check_in: existing.check_in || '', check_out: existing.check_out || '', notes: existing.notes || '' }
+    : BLANK)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  function set(f, v) { setForm(p => ({ ...p, [f]: v })) }
+
+  async function save(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      const payload = { ...form, profile_id: profileId, updated_at: new Date().toISOString() }
+      if (existing) {
+        const { data, error: err } = await supabase.from('accommodations').update(payload).eq('id', existing.id).select().single()
+        if (err) throw err
+        onSave(data)
+      } else {
+        const { data, error: err } = await supabase.from('accommodations').insert(payload).select().single()
+        if (err) throw err
+        onSave(data)
+      }
+      setOpen(false)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="card space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="font-semibold text-slate-700">Accommodation</h2>
+        <button onClick={() => setOpen(o => !o)} className="text-sm text-blue-600">
+          {open ? 'Cancel' : existing ? 'Edit' : '+ Add'}
+        </button>
+      </div>
+
+      {!open && existing && (
+        <div className="text-sm space-y-1">
+          <Row label="Type" value={existing.type} />
+          <Row label="Name" value={existing.name} />
+          <Row label="Address" value={existing.address} />
+          {existing.check_in && <Row label="Check-in" value={existing.check_in} />}
+          {existing.check_out && <Row label="Check-out" value={existing.check_out} />}
+          {existing.contact_info && <Row label="Contact" value={existing.contact_info} />}
+          {existing.notes && <Row label="Notes" value={existing.notes} />}
+        </div>
+      )}
+
+      {!open && !existing && (
+        <p className="text-sm text-slate-400">No accommodation entered</p>
+      )}
+
+      {open && (
+        <form onSubmit={save} className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            {[['hotel', '🏨', 'Hotel'], ['local_housing', '🏠', 'Local Housing']].map(([val, icon, label]) => (
+              <button key={val} type="button" onClick={() => set('type', val)}
+                className={`py-2 rounded-xl border text-sm font-medium transition-colors
+                  ${form.type === val ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200'}`}>
+                {icon} {label}
+              </button>
+            ))}
+          </div>
+          <div>
+            <label className="label">Name</label>
+            <input className="input text-sm" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Marriott DFW" />
+          </div>
+          <div>
+            <label className="label">Address</label>
+            <input className="input text-sm" value={form.address} onChange={e => set('address', e.target.value)} placeholder="123 Main St, Irving TX" />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="label">Check-in</label>
+              <input className="input text-sm" type="date" value={form.check_in} onChange={e => set('check_in', e.target.value)} />
+            </div>
+            <div>
+              <label className="label">Check-out</label>
+              <input className="input text-sm" type="date" value={form.check_out} onChange={e => set('check_out', e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="label">Contact / Confirmation #</label>
+            <input className="input text-sm" value={form.contact_info} onChange={e => set('contact_info', e.target.value)} placeholder="Booking ref or host phone" />
+          </div>
+          <div>
+            <label className="label">Notes</label>
+            <input className="input text-sm" value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Room number, parking, etc." />
+          </div>
+          {error && <p className="text-xs text-red-600 bg-red-50 rounded-lg p-2">{error}</p>}
+          <button className="btn-primary" type="submit" disabled={saving}>
+            {saving ? 'Saving…' : existing ? 'Update Accommodation' : 'Save Accommodation'}
+          </button>
+        </form>
+      )}
     </div>
   )
 }
