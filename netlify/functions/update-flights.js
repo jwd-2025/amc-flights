@@ -1,6 +1,10 @@
-// Netlify scheduled function — runs every 4 hours
-// Schedule: "0 */4 * * *"
-// Set SUPABASE_SERVICE_ROLE_KEY and AVIATIONSTACK_KEY in Netlify env vars
+// Netlify scheduled function — runs every 30 minutes
+// Schedule: "*/30 * * * *"
+// Checks flights on a tiered schedule based on proximity:
+//   < 6 hrs out  → check every run (every 30 min)
+//   6–24 hrs out → check if not checked in the last 60 min
+//   24–48 hrs out → check if not checked in the last 4 hrs
+//   > 48 hrs out → skip
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -11,20 +15,21 @@ const supabase = createClient(
 
 const AVIATION_KEY = process.env.AVIATIONSTACK_KEY
 
+const HOUR = 60 * 60 * 1000
+
 export const handler = async () => {
   if (!AVIATION_KEY) {
     console.log('No AVIATIONSTACK_KEY set — skipping flight updates')
     return { statusCode: 200, body: 'No API key' }
   }
 
-  // Fetch flights scheduled in the next 48 hours that haven't landed/cancelled
-  const now = new Date().toISOString()
-  const cutoff = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+  const now = Date.now()
+  const cutoff = new Date(now + 48 * HOUR).toISOString()
 
   const { data: flights, error } = await supabase
     .from('flights')
     .select('*')
-    .gte('scheduled_time', now)
+    .gte('scheduled_time', new Date(now).toISOString())
     .lte('scheduled_time', cutoff)
     .not('status', 'in', '(landed,cancelled)')
 
@@ -33,17 +38,33 @@ export const handler = async () => {
     return { statusCode: 500, body: 'DB error' }
   }
 
-  console.log(`Checking ${flights?.length || 0} upcoming flights`)
+  // Filter by tiered staleness
+  const toCheck = (flights || []).filter(flight => {
+    const hoursOut = (new Date(flight.scheduled_time) - now) / HOUR
+    const lastChecked = flight.api_last_checked ? (now - new Date(flight.api_last_checked)) : Infinity
+
+    if (hoursOut < 6)  return true                    // always check
+    if (hoursOut < 24) return lastChecked > 1 * HOUR  // check if stale > 1 hr
+    return lastChecked > 4 * HOUR                     // check if stale > 4 hrs
+  })
+
+  console.log(`${flights?.length || 0} upcoming flights, checking ${toCheck.length}`)
 
   const updates = []
 
-  for (const flight of flights || []) {
+  for (const flight of toCheck) {
     try {
       const res = await fetch(
         `http://api.aviationstack.com/v1/flights?access_key=${AVIATION_KEY}&flight_iata=${flight.flight_number}`
       )
       const json = await res.json()
       const raw = json?.data?.[0]
+
+      // Always update api_last_checked even if nothing changed
+      await supabase.from('flights')
+        .update({ api_last_checked: new Date().toISOString() })
+        .eq('id', flight.id)
+
       if (!raw) continue
 
       const newStatus = normalizeStatus(raw.flight_status)
@@ -61,24 +82,20 @@ export const handler = async () => {
 
       if (Object.keys(changes).length === 0) continue
 
-      // Update flight
       await supabase.from('flights').update({
         status: newStatus,
         actual_time: newActual || flight.actual_time,
         terminal: newTerminal || flight.terminal,
         gate: newGate || flight.gate,
-        api_last_checked: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }).eq('id', flight.id)
 
-      // Record history
       await supabase.from('flight_history').insert({
         flight_id: flight.id,
-        changed_by: null, // system update
+        changed_by: null,
         changes,
       })
 
-      // Create notification for the guest
       const message = buildNotificationMessage(flight, changes)
       if (message) {
         await supabase.from('notifications').insert({
@@ -97,7 +114,7 @@ export const handler = async () => {
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ updated: updates }),
+    body: JSON.stringify({ checked: toCheck.length, updated: updates }),
   }
 }
 

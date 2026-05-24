@@ -20,4 +20,4 @@
 
 # Scheduled function: update flights every 4 hours
 [functions."update-flights"]
-  schedule = "0 */4 * * *"
+  schedule = "*/30 * * * *"
