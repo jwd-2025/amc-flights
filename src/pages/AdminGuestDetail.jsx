@@ -51,6 +51,12 @@ export default function AdminGuestDetail() {
     setLoading(false)
   }
 
+  async function deleteGuest() {
+    if (!confirm(`Delete ${guest?.name || 'this guest'}? This will also remove all their flights, accommodation, and transfers.`)) return
+    await supabase.from('profiles').delete().eq('id', id)
+    navigate('/admin')
+  }
+
   async function saveInfo(e) {
     e.preventDefault()
     setSaving(true)
@@ -94,7 +100,10 @@ export default function AdminGuestDetail() {
       <div className="card space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-slate-700">Profile</h2>
-          <button onClick={() => setEditInfo(e => !e)} className="text-sm text-blue-600">{editInfo ? 'Cancel' : 'Edit'}</button>
+          <div className="flex gap-3">
+            <button onClick={() => setEditInfo(e => !e)} className="text-sm text-blue-600">{editInfo ? 'Cancel' : 'Edit'}</button>
+            {!editInfo && <button onClick={deleteGuest} className="text-sm text-red-500 hover:text-red-700">Delete</button>}
+          </div>
         </div>
         {editInfo ? (
           <form onSubmit={saveInfo} className="space-y-3">
