@@ -34,6 +34,14 @@ export default function Layout({ children, title, showBack = false, backTo }) {
           <div className="flex items-center gap-2">
             {profile?.role === 'admin' && (
               <button
+                onClick={() => navigate('/driver')}
+                className="text-blue-200 hover:text-white text-sm font-medium"
+              >
+                My Drives
+              </button>
+            )}
+            {profile?.role === 'admin' && (
+              <button
                 onClick={() => navigate('/admin')}
                 className="text-blue-200 hover:text-white text-sm font-medium"
               >
