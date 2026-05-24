@@ -188,7 +188,7 @@ export default function FlightFormPage() {
               onChange={e => set('flight_number', e.target.value)}
               required
             />
-            {flightApiAvailable && (
+            {flightApiAvailable && isToday(form.scheduled_time) && (
               <button
                 type="button"
                 onClick={handleLookup}
@@ -272,6 +272,15 @@ export default function FlightFormPage() {
       </form>
     </Layout>
   )
+}
+
+function isToday(scheduledTime) {
+  if (!scheduledTime) return false
+  const d = new Date(scheduledTime)
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate()
 }
 
 function buildChanges(original, updated) {
