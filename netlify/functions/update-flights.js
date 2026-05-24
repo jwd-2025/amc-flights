@@ -26,6 +26,13 @@ export const handler = async () => {
   const now = Date.now()
   const cutoff = new Date(now + 48 * HOUR).toISOString()
 
+  // Load admin profile IDs once — they get notified of all changes
+  const { data: admins } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+  const adminIds = (admins || []).map(a => a.id)
+
   const { data: flights, error } = await supabase
     .from('flights')
     .select('*')
@@ -98,12 +105,28 @@ export const handler = async () => {
 
       const message = buildNotificationMessage(flight, changes)
       if (message) {
-        await supabase.from('notifications').insert({
-          profile_id: flight.profile_id,
+        // Find the assigned driver for this flight's transfer (if any)
+        const { data: transfer } = await supabase
+          .from('transfers')
+          .select('driver_id')
+          .eq('flight_id', flight.id)
+          .not('driver_id', 'is', null)
+          .maybeSingle()
+
+        // Collect unique recipient IDs: guest + admins + assigned driver
+        const recipients = new Set([
+          flight.profile_id,
+          ...adminIds,
+          ...(transfer?.driver_id ? [transfer.driver_id] : []),
+        ])
+        // Don't double-notify the guest if they're also an admin
+        const rows = [...recipients].map(profile_id => ({
+          profile_id,
           flight_id: flight.id,
           message,
           seen: false,
-        })
+        }))
+        await supabase.from('notifications').insert(rows)
       }
 
       updates.push(flight.flight_number)
