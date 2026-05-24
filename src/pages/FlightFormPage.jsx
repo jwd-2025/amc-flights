@@ -111,7 +111,7 @@ export default function FlightFormPage() {
     setLoading(true)
 
     const payload = {
-      profile_id: guestProfileId || profile.id,
+      profile_id: isEdit ? originalFlight?.profile_id : (guestProfileId || profile.id),
       direction: form.direction,
       flight_number: form.flight_number.toUpperCase().trim(),
       airline: form.airline,
