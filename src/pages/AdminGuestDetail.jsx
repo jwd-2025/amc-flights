@@ -305,45 +305,63 @@ function AccommodationEdit({ profileId, existing, onSave }) {
 function DriverAssignment({ flight, profileId, drivers, existingTransfer, onSave }) {
   const isArrival = flight.direction === 'arrival'
   const transferType = isArrival ? 'pickup' : 'dropoff'
-  const [driverId, setDriverId] = useState(existingTransfer?.driver_id || '')
+  const savedDriverId = existingTransfer?.driver_id || ''
+  const [driverId, setDriverId] = useState(savedDriverId)
   const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
 
-  async function assign(e) {
-    const val = e.target.value
-    setDriverId(val)
+  const isDirty = driverId !== savedDriverId
+
+  async function assign() {
     setSaving(true)
+    setSaved(false)
     let data
     if (existingTransfer) {
       const res = await supabase.from('transfers')
-        .update({ driver_id: val || null, status: val ? 'assigned' : 'pending', updated_at: new Date().toISOString() })
+        .update({ driver_id: driverId || null, status: driverId ? 'assigned' : 'pending', updated_at: new Date().toISOString() })
         .eq('id', existingTransfer.id).select().single()
       data = res.data
     } else {
       const res = await supabase.from('transfers')
-        .insert({ profile_id: profileId, flight_id: flight.id, transfer_type: transferType, driver_id: val || null, status: val ? 'assigned' : 'pending' })
+        .insert({ profile_id: profileId, flight_id: flight.id, transfer_type: transferType, driver_id: driverId || null, status: driverId ? 'assigned' : 'pending' })
         .select().single()
       data = res.data
     }
     if (data) onSave(data)
     setSaving(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
   }
 
   return (
-    <div className="card flex items-center gap-3">
-      <span className="text-xl shrink-0">{isArrival ? '🛬' : '🛫'}</span>
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-slate-800">{flight.flight_number}</p>
-        <p className="text-xs text-slate-500 capitalize">{transferType}</p>
+    <div className="card space-y-2">
+      <div className="flex items-center gap-3">
+        <span className="text-xl shrink-0">{isArrival ? '🛬' : '🛫'}</span>
+        <div className="flex-1 min-w-0">
+          <p className="font-medium text-slate-800">{flight.flight_number}</p>
+          <p className="text-xs text-slate-500 capitalize">{transferType}</p>
+        </div>
+        {saved && <span className="text-xs text-green-600 font-medium">Saved ✓</span>}
       </div>
-      <select
-        className="input text-sm w-auto max-w-[180px]"
-        value={driverId}
-        onChange={assign}
-        disabled={saving}
-      >
-        <option value="">— No driver —</option>
-        {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-      </select>
+      <div className="flex gap-2">
+        <select
+          className="input text-sm flex-1"
+          value={driverId}
+          onChange={e => setDriverId(e.target.value)}
+          disabled={saving}
+        >
+          <option value="">— No driver —</option>
+          {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+        </select>
+        <button
+          onClick={assign}
+          disabled={saving || !isDirty}
+          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl
+                     hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          {saving ? '…' : 'Assign'}
+        </button>
+      </div>
     </div>
   )
 }
