@@ -333,6 +333,14 @@ function DriverAssignment({ flight, profileId, drivers, existingTransfer, onSave
     setTimeout(() => setSaved(false), 2000)
   }
 
+  const status = existingTransfer?.status || 'pending'
+  const statusStyle = {
+    pending:     'bg-slate-100 text-slate-500',
+    assigned:    'bg-blue-100 text-blue-700',
+    in_progress: 'bg-amber-100 text-amber-700',
+    completed:   'bg-green-100 text-green-700',
+  }[status] || 'bg-slate-100 text-slate-500'
+
   return (
     <div className="card space-y-2">
       <div className="flex items-center gap-3">
@@ -341,8 +349,22 @@ function DriverAssignment({ flight, profileId, drivers, existingTransfer, onSave
           <p className="font-medium text-slate-800">{flight.flight_number}</p>
           <p className="text-xs text-slate-500 capitalize">{transferType}</p>
         </div>
+        <span className={`badge ${statusStyle} capitalize`}>{status.replace('_', ' ')}</span>
         {saved && <span className="text-xs text-green-600 font-medium">Saved ✓</span>}
       </div>
+
+      {flight.notes && (
+        <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+          📝 {flight.notes}
+        </p>
+      )}
+
+      {existingTransfer?.completed_at && (
+        <p className="text-xs text-green-600">
+          Completed {dayjs(existingTransfer.completed_at).format('MMM D h:mm A')}
+        </p>
+      )}
+
       <div className="flex gap-2">
         <select
           className="input text-sm flex-1"
